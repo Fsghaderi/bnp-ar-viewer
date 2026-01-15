@@ -251,12 +251,14 @@
             align-items: center;
             justify-content: center;
             transition: all 0.25s ease;
+            position: relative;
         }
         
-        .card-thumb model-viewer {
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            fill: var(--forest);
+            opacity: 0.6;
         }
         
         .card-name {
@@ -306,6 +308,23 @@
             opacity: 0.6;
         }
         
+        /* Progress bar */
+        .progress-container {
+            width: 200px;
+            height: 4px;
+            background: var(--sand);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: var(--forest);
+            width: 0%;
+            transition: width 0.2s ease;
+        }
+        
         /* No AR support message */
         .no-ar-message {
             position: absolute;
@@ -338,7 +357,10 @@
     <main class="viewer-container">
         <div class="loading-overlay" id="loadingOverlay">
             <div class="spinner"></div>
-            <div class="loading-text">Loading model...</div>
+            <div class="loading-text" id="loadingText">Loading model...</div>
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
         </div>
         
         <model-viewer
@@ -399,17 +421,24 @@
             { id: 'who-house', file: 'Who_House.usdz', name: 'Who House' }
         ];
         
+        // Simple icon for thumbnails (instead of loading full 3D models)
+        const thumbIcon = `<svg class="card-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L4 7v10l8 5 8-5V7l-8-5zm0 2.5L17.5 8 12 11.5 6.5 8 12 4.5zM6 9.5l5 3v6l-5-3v-6zm7 9v-6l5-3v6l-5 3z"/>
+        </svg>`;
+        
         const mainViewer = document.getElementById('mainViewer');
         const componentName = document.getElementById('componentName');
         const componentDesc = document.getElementById('componentDesc');
         const arButton = document.getElementById('arButton');
         const noArMessage = document.getElementById('noArMessage');
         const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const progressBar = document.getElementById('progressBar');
         const slider = document.getElementById('componentSlider');
         
         let activeComponent = components[0];
         
-        // Build slider cards
+        // Build slider cards with simple icons (no 3D thumbnails)
         function buildSlider() {
             components.forEach((comp, index) => {
                 const card = document.createElement('div');
@@ -417,13 +446,7 @@
                 card.dataset.id = comp.id;
                 card.innerHTML = `
                     <div class="card-thumb">
-                        <model-viewer
-                            src="${comp.file}"
-                            auto-rotate
-                            rotation-per-second="30deg"
-                            interaction-prompt="none"
-                            camera-orbit="45deg 55deg 105%"
-                        ></model-viewer>
+                        ${thumbIcon}
                     </div>
                     <p class="card-name">${comp.name}</p>
                 `;
@@ -434,12 +457,16 @@
         
         // Select a component
         function selectComponent(comp, cardEl) {
+            if (comp.id === activeComponent.id) return;
+            
             // Update active state
             document.querySelectorAll('.component-card').forEach(c => c.classList.remove('active'));
             cardEl.classList.add('active');
             
             // Show loading
             loadingOverlay.classList.remove('hidden');
+            loadingText.textContent = `Loading ${comp.name}...`;
+            progressBar.style.width = '0%';
             
             // Update main viewer
             activeComponent = comp;
@@ -454,9 +481,22 @@
             cardEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
         }
         
-        // Handle model load
+        // Handle model loading progress
+        mainViewer.addEventListener('progress', (event) => {
+            const progress = event.detail.totalProgress * 100;
+            progressBar.style.width = `${progress}%`;
+        });
+        
+        // Handle model load complete
         mainViewer.addEventListener('load', () => {
             loadingOverlay.classList.add('hidden');
+            progressBar.style.width = '100%';
+        });
+        
+        // Handle load errors
+        mainViewer.addEventListener('error', (event) => {
+            loadingText.textContent = 'Error loading model. Please try again.';
+            console.error('Model loading error:', event);
         });
         
         // AR button handler
@@ -466,7 +506,7 @@
             }
         });
         
-        // Check AR support
+        // Check AR support after first load
         mainViewer.addEventListener('load', () => {
             setTimeout(() => {
                 if (!mainViewer.canActivateAR) {
@@ -474,7 +514,7 @@
                     noArMessage.style.display = 'block';
                 }
             }, 500);
-        });
+        }, { once: true });
         
         // Initialize
         buildSlider();
