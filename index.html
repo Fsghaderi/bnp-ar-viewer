@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BNP Components | AR Viewer</title>
+    
+    <!-- Model Viewer -->
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --forest: #2D5A3D;
+            --forest-dark: #1E3D29;
+            --bark: #8B6914;
+            --cream: #FAF8F3;
+            --sand: #E8E2D5;
+            --charcoal: #2C2C2C;
+            --moss: #7BA05B;
+        }
+        
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--cream);
+            color: var(--charcoal);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .header {
+            padding: 16px 20px;
+            background: var(--forest-dark);
+            color: var(--cream);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        
+        .logo {
+            width: 36px;
+            height: 36px;
+            background: var(--moss);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .logo svg {
+            width: 22px;
+            height: 22px;
+            fill: var(--forest-dark);
+        }
+        
+        .header-text h1 {
+            font-family: 'Fraunces', serif;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        
+        .header-text p {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 1px;
+        }
+        
+        /* Main viewer area */
+        .viewer-container {
+            flex: 1;
+            position: relative;
+            background: linear-gradient(180deg, var(--sand) 0%, var(--cream) 100%);
+            overflow: hidden;
+        }
+        
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            --poster-color: transparent;
+        }
+        
+        model-viewer::part(default-ar-button) {
+            display: none;
+        }
+        
+        /* Component info overlay */
+        .component-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 16px 20px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            transform: translateY(-10px);
+            opacity: 0;
+            animation: slideIn 0.4s ease forwards;
+            animation-delay: 0.2s;
+        }
+        
+        @keyframes slideIn {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .component-info h2 {
+            font-family: 'Fraunces', serif;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--forest-dark);
+            margin-bottom: 4px;
+        }
+        
+        .component-info p {
+            font-size: 13px;
+            color: var(--charcoal);
+            opacity: 0.7;
+        }
+        
+        /* AR Button */
+        .ar-button {
+            position: absolute;
+            bottom: 200px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--forest);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 100px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 32px rgba(45, 90, 61, 0.35);
+            transition: all 0.3s ease;
+        }
+        
+        .ar-button:active {
+            transform: translateX(-50%) scale(0.96);
+        }
+        
+        .ar-button svg {
+            width: 22px;
+            height: 22px;
+        }
+        
+        .ar-button.hidden {
+            display: none;
+        }
+        
+        /* Instruction hint */
+        .hint {
+            position: absolute;
+            bottom: 260px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: var(--charcoal);
+            opacity: 0.5;
+            text-align: center;
+            white-space: nowrap;
+        }
+        
+        /* Component Slider */
+        .slider-section {
+            flex-shrink: 0;
+            background: white;
+            border-top: 1px solid var(--sand);
+            padding: 16px 0 24px;
+        }
+        
+        .slider-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--charcoal);
+            opacity: 0.5;
+            padding: 0 20px;
+            margin-bottom: 12px;
+        }
+        
+        .slider-wrapper {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        
+        .slider-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .slider {
+            display: flex;
+            gap: 12px;
+            padding: 0 20px;
+            width: max-content;
+        }
+        
+        .component-card {
+            width: 100px;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        
+        .component-card:active {
+            transform: scale(0.95);
+        }
+        
+        .component-card.active .card-thumb {
+            border-color: var(--forest);
+            box-shadow: 0 0 0 3px rgba(45, 90, 61, 0.2);
+        }
+        
+        .card-thumb {
+            width: 100px;
+            height: 80px;
+            background: var(--sand);
+            border-radius: 12px;
+            border: 2px solid transparent;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s ease;
+        }
+        
+        .card-thumb model-viewer {
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .card-name {
+            font-size: 11px;
+            font-weight: 500;
+            text-align: center;
+            margin-top: 8px;
+            color: var(--charcoal);
+            line-height: 1.3;
+        }
+        
+        /* Loading state */
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: var(--cream);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            z-index: 100;
+            transition: opacity 0.4s ease;
+        }
+        
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--sand);
+            border-top-color: var(--forest);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 14px;
+            color: var(--charcoal);
+            opacity: 0.6;
+        }
+        
+        /* No AR support message */
+        .no-ar-message {
+            position: absolute;
+            bottom: 200px;
+            left: 20px;
+            right: 20px;
+            background: var(--sand);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--charcoal);
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L4 7v10l8 5 8-5V7l-8-5zm0 2.5L17.5 8 12 11.5 6.5 8 12 4.5zM6 9.5l5 3v6l-5-3v-6zm7 9v-6l5-3v6l-5 3z"/>
+            </svg>
+        </div>
+        <div class="header-text">
+            <h1>Bienenstock Natural Playgrounds</h1>
+            <p>AR Component Viewer</p>
+        </div>
+    </header>
+    
+    <main class="viewer-container">
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading model...</div>
+        </div>
+        
+        <model-viewer
+            id="mainViewer"
+            src="2__Hill_Slide.usdz"
+            ios-src="2__Hill_Slide.usdz"
+            ar
+            ar-modes="scene-viewer quick-look webxr"
+            ar-scale="fixed"
+            camera-controls
+            touch-action="pan-y"
+            auto-rotate
+            shadow-intensity="1"
+            shadow-softness="0.8"
+            exposure="1"
+            environment-image="neutral"
+            alt="3D playground component"
+        ></model-viewer>
+        
+        <div class="component-info">
+            <h2 id="componentName">Hill Slide</h2>
+            <p id="componentDesc">Tap "View in AR" to see actual size</p>
+        </div>
+        
+        <p class="hint">Pinch to zoom • Drag to rotate</p>
+        
+        <button class="ar-button" id="arButton">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 3L4 7.5v9L12 21l8-4.5v-9L12 3z"/>
+                <path d="M12 12L4 7.5M12 12l8-4.5M12 12v9"/>
+            </svg>
+            View in AR
+        </button>
+        
+        <div class="no-ar-message" id="noArMessage">
+            AR is not supported on this device. You can still explore the 3D models above.
+        </div>
+    </main>
+    
+    <section class="slider-section">
+        <p class="slider-label">Select Component</p>
+        <div class="slider-wrapper">
+            <div class="slider" id="componentSlider">
+                <!-- Cards will be injected here -->
+            </div>
+        </div>
+    </section>
+    
+    <script>
+        const components = [
+            { id: 'hill-slide', file: '2__Hill_Slide.usdz', name: 'Hill Slide' },
+            { id: 'carved-seat', file: 'Carved_Seat.usdz', name: 'Carved Seat' },
+            { id: 'log-fort', file: 'Log_Fort.usdz', name: 'Log Fort' },
+            { id: 'sideways-tree', file: 'Sideways_Tree.usdz', name: 'Sideways Tree' },
+            { id: 'tunnel', file: 'Tunnel.usdz', name: 'Tunnel' },
+            { id: 'upside-down-tree', file: 'Upside_Down_Tree.usdz', name: 'Upside Down Tree' },
+            { id: 'wacky-beams', file: 'Wacky_And_Beams.usdz', name: 'Wacky & Beams' },
+            { id: 'who-house', file: 'Who_House.usdz', name: 'Who House' }
+        ];
+        
+        const mainViewer = document.getElementById('mainViewer');
+        const componentName = document.getElementById('componentName');
+        const componentDesc = document.getElementById('componentDesc');
+        const arButton = document.getElementById('arButton');
+        const noArMessage = document.getElementById('noArMessage');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const slider = document.getElementById('componentSlider');
+        
+        let activeComponent = components[0];
+        
+        // Build slider cards
+        function buildSlider() {
+            components.forEach((comp, index) => {
+                const card = document.createElement('div');
+                card.className = `component-card ${index === 0 ? 'active' : ''}`;
+                card.dataset.id = comp.id;
+                card.innerHTML = `
+                    <div class="card-thumb">
+                        <model-viewer
+                            src="${comp.file}"
+                            auto-rotate
+                            rotation-per-second="30deg"
+                            interaction-prompt="none"
+                            camera-orbit="45deg 55deg 105%"
+                        ></model-viewer>
+                    </div>
+                    <p class="card-name">${comp.name}</p>
+                `;
+                card.addEventListener('click', () => selectComponent(comp, card));
+                slider.appendChild(card);
+            });
+        }
+        
+        // Select a component
+        function selectComponent(comp, cardEl) {
+            // Update active state
+            document.querySelectorAll('.component-card').forEach(c => c.classList.remove('active'));
+            cardEl.classList.add('active');
+            
+            // Show loading
+            loadingOverlay.classList.remove('hidden');
+            
+            // Update main viewer
+            activeComponent = comp;
+            mainViewer.src = comp.file;
+            mainViewer.setAttribute('ios-src', comp.file);
+            
+            // Update info
+            componentName.textContent = comp.name;
+            componentDesc.textContent = 'Tap "View in AR" to see actual size';
+            
+            // Scroll card into view
+            cardEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+        
+        // Handle model load
+        mainViewer.addEventListener('load', () => {
+            loadingOverlay.classList.add('hidden');
+        });
+        
+        // AR button handler
+        arButton.addEventListener('click', () => {
+            if (mainViewer.canActivateAR) {
+                mainViewer.activateAR();
+            }
+        });
+        
+        // Check AR support
+        mainViewer.addEventListener('load', () => {
+            setTimeout(() => {
+                if (!mainViewer.canActivateAR) {
+                    arButton.classList.add('hidden');
+                    noArMessage.style.display = 'block';
+                }
+            }, 500);
+        });
+        
+        // Initialize
+        buildSlider();
+    </script>
+</body>
+</html>
